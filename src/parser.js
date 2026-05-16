@@ -35,14 +35,11 @@ export function parseHangulNotes(text, options = {}) {
   const defaultDuration = options.defaultDuration ?? "quarter";
   const tokens = tokenize(text);
   const notes = [];
-  let currentOctave = baseOctave;
-  let previousIndex = null;
   let measure = 1;
 
   for (const token of tokens) {
     if (token.type === "bar") {
       measure += 1;
-      previousIndex = null;
       continue;
     }
 
@@ -50,17 +47,7 @@ export function parseHangulNotes(text, options = {}) {
     const def = NOTE_DEFS[token.name];
     if (!isRest && !def) continue;
 
-    let octave = currentOctave;
-    if (!isRest && token.octaveDelta === 0 && previousIndex !== null) {
-      if (previousIndex === 6 && def.index === 0) currentOctave += 1;
-      if (previousIndex === 0 && def.index === 6 && currentOctave > 1) currentOctave -= 1;
-      octave = currentOctave;
-    }
-
-    if (!isRest && token.octaveDelta !== 0) {
-      octave = baseOctave + token.octaveDelta;
-      currentOctave = octave;
-    }
+    const octave = isRest ? null : baseOctave + token.octaveDelta;
 
     const accidental = token.accidental;
     const midi = isRest ? null : 12 * (octave + 1) + def.semitone + accidental;
@@ -78,7 +65,6 @@ export function parseHangulNotes(text, options = {}) {
       measure,
     });
 
-    if (!isRest) previousIndex = def.index;
   }
 
   return notes;
