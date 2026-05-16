@@ -1,86 +1,147 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hangul Note Staff</title>
-    <link rel="stylesheet" href="./styles.css" />
-    <script type="module" src="./src/app.js"></script>
-  </head>
-  <body>
-    <header class="app-header">
-      <div>
-        <p class="eyebrow">Korean solfege to staff notation</p>
-        <h1>Hangul Note Staff</h1>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hangul Note Staff</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script type="module" src="./src/app.js"></script>
+</head>
+
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Korean solfege to staff notation</p>
+      <h1>Hangul Note Staff</h1>
+    </div>
+    <div class="header-actions">
+      <button id="sampleButton" type="button" class="ghost-button">샘플</button>
+      <button id="renderButton" type="button" class="primary-button">악보 만들기</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="input-panel" aria-label="음계 입력">
+      <div class="field-group">
+        <label for="noteInput">한글 음계</label>
+        <textarea id="noteInput" spellcheck="false">도 레 미 파 | 솔 라 시 도</textarea>
+        <p class="hint">붙여쓰기와 띄어쓰기 모두 지원합니다.</p>
       </div>
-      <div class="header-actions">
-        <button id="sampleButton" type="button" class="ghost-button">샘플</button>
-        <button id="renderButton" type="button" class="primary-button">악보 만들기</button>
+
+      <div class="settings-grid">
+        <label>
+          시작 옥타브
+          <input id="octaveInput" type="number" min="2" max="6" value="4" />
+        </label>
+        <label>
+          박자
+          <select id="timeSignatureInput">
+            <option value="4/4" selected>4/4</option>
+            <option value="3/4">3/4</option>
+            <option value="2/4">2/4</option>
+            <option value="6/8">6/8</option>
+          </select>
+        </label>
+        <label>
+          기본 길이
+          <select id="durationInput">
+            <option value="quarter" selected>4분음표</option>
+            <option value="half">2분음표</option>
+            <option value="eighth">8분음표</option>
+            <option value="whole">온음표</option>
+          </select>
+        </label>
+        <label>
+          빠르기
+          <input id="tempoInput" type="number" min="40" max="220" value="96" />
+        </label>
       </div>
-    </header>
 
-    <main class="workspace">
-      <section class="input-panel" aria-label="음계 입력">
-        <div class="field-group">
-          <label for="noteInput">한글 음계</label>
-          <textarea id="noteInput" spellcheck="false">도 레 미 파 | 솔 라 시 도</textarea>
-          <p class="hint">붙여쓰기와 띄어쓰기 모두 지원합니다. 예: 도레미파솔라시도, 도/2 레/4 미/8, 쉼</p>
-        </div>
+      <div class="upload-row">
+        <label class="file-picker">
+          PDF/TXT 올리기
+          <input id="fileInput" type="file" accept=".pdf,.txt,text/plain,application/pdf" />
+        </label>
+        <button id="clearButton" type="button" class="ghost-button">지우기</button>
+      </div>
 
-        <div class="settings-grid">
-          <label>
-            시작 옥타브
-            <input id="octaveInput" type="number" min="2" max="6" value="4" />
-          </label>
-          <label>
-            박자
-            <select id="timeSignatureInput">
-              <option value="4/4" selected>4/4</option>
-              <option value="3/4">3/4</option>
-              <option value="2/4">2/4</option>
-              <option value="6/8">6/8</option>
-            </select>
-          </label>
-          <label>
-            기본 길이
-            <select id="durationInput">
-              <option value="quarter" selected>4분음표</option>
-              <option value="half">2분음표</option>
-              <option value="eighth">8분음표</option>
-              <option value="whole">온음표</option>
-            </select>
-          </label>
-          <label>
-            빠르기
-            <input id="tempoInput" type="number" min="40" max="220" value="96" />
-          </label>
-        </div>
-
-        <div class="upload-row">
-          <label class="file-picker">
-            PDF/TXT 올리기
-            <input id="fileInput" type="file" accept=".pdf,.txt,text/plain,application/pdf" />
-          </label>
-          <button id="clearButton" type="button" class="ghost-button">지우기</button>
-        </div>
+      <section class="symbol-guide" aria-label="악보 입력 기호 안내">
+        <h2>기호 사용법</h2>
+        <dl>
+          <div>
+            <dt>|</dt>
+            <dd>마디 구분</dd>
+          </div>
+          <div>
+            <dt>/4</dt>
+            <dd>4분음표</dd>
+          </div>
+          <div>
+            <dt>/2</dt>
+            <dd>2분음표</dd>
+          </div>
+          <div>
+            <dt>/8</dt>
+            <dd>8분음표</dd>
+          </div>
+          <div>
+            <dt>쉼</dt>
+            <dd>쉼표</dd>
+          </div>
+          <div>
+            <dt>'</dt>
+            <dd>한 옥타브 위</dd>
+          </div>
+          <div>
+            <dt>,</dt>
+            <dd>한 옥타브 아래</dd>
+          </div>
+          <div>
+            <dt>#</dt>
+            <dd>샵</dd>
+          </div>
+          <div>
+            <dt>b</dt>
+            <dd>플랫</dd>
+          </div>
+          </dl>
+          <div class="example-guide">
+            <h3>사용 예시</h3>
+            <div class="example-card">
+              <span>기본 리듬과 마디</span>
+              <code>도/4 레/4 미/4 파/4 | 솔/2 라/2 | 시 도'</code>
+            </div>
+            <div class="example-card">
+              <span>쉼표, 샵, 플랫</span>
+              <code>도 레 쉼 파 | 솔# 라 시b 도'</code>
+            </div>
+            <div class="example-card">
+              <span>낮은 옥타브와 붙여쓰기</span>
+              <code>도, 레, 미, 파, | 도레미파솔라시도</code>
+            </div>
+          </div>
+        </section>
 
         <div id="statusMessage" class="status" role="status">입력한 한글 음계를 오선보로 변환할 준비가 되었습니다.</div>
-      </section>
+    </section>
 
-      <section class="score-panel" aria-label="악보 미리보기">
-        <div class="score-toolbar">
-          <div>
-            <h2>오선보 미리보기</h2>
-            <p id="scoreSummary">8개 음표, C major, treble staff</p>
-          </div>
-          <div class="download-actions">
-            <button id="svgButton" type="button" class="ghost-button">SVG</button>
-            <button id="pngButton" type="button" class="ghost-button">PNG</button>
-            <button id="musicXmlButton" type="button" class="ghost-button">MusicXML</button>
-          </div>
+    <section class="score-panel" aria-label="악보 미리보기">
+      <div class="score-toolbar">
+        <div>
+          <h2>오선보 미리보기</h2>
+          <p id="scoreSummary">8개 음표, C major, treble staff</p>
         </div>
-        <div id="scoreCanvas" class="score-canvas"></div>
-      </section>
-    </main>
-  </body>
+        <div class="download-actions">
+          <button id="svgButton" type="button" class="ghost-button">SVG</button>
+          <button id="pngButton" type="button" class="ghost-button">PNG</button>
+          <button id="pdfButton" type="button" class="ghost-button">PDF</button>
+          <button id="musicXmlButton" type="button" class="ghost-button">MusicXML</button>
+        </div>
+      </div>
+      <div id="scoreCanvas" class="score-canvas"></div>
+    </section>
+  </main>
+</body>
+
 </html>

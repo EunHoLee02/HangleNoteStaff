@@ -199,6 +199,94 @@ button,
   background: #fff5f2;
 }
 
+.symbol-guide {
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fffefa;
+}
+
+.symbol-guide h2 {
+  margin-bottom: 12px;
+  font-size: 1rem;
+}
+
+.symbol-guide dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.symbol-guide dl > div {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+
+.symbol-guide dt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f7f4ea;
+  color: var(--ink);
+  font-family: Consolas, "Segoe UI", monospace;
+  font-weight: 800;
+}
+
+.symbol-guide dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.example-guide {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.example-guide h3 {
+  margin: 0;
+  font-size: 0.94rem;
+}
+
+.example-card {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 1fr;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfaf6;
+}
+
+.example-card span {
+  color: var(--green);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.example-card code {
+  display: block;
+  overflow-wrap: anywhere;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #f4f8fb;
+  color: var(--ink);
+  font-family: Consolas, "Malgun Gothic", monospace;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .score-toolbar {
   display: flex;
   justify-content: space-between;
@@ -221,14 +309,33 @@ button,
   width: 100%;
   min-height: 420px;
   overflow: auto;
-  background: #fffefa;
+  background: #eef1ef;
+  padding: 22px;
 }
 
 .score-canvas svg {
   display: block;
-  min-width: 760px;
-  width: 100%;
+  width: min(100%, 794px);
   height: auto;
+  margin: 0 auto;
+  background: #fffefa;
+  box-shadow: 0 10px 32px rgba(29, 37, 40, 0.13);
+}
+
+.score-page {
+  margin: 0 auto 24px;
+}
+
+.score-page:last-child {
+  margin-bottom: 0;
+}
+
+.page-caption {
+  width: min(100%, 794px);
+  margin: 8px auto 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-align: right;
 }
 
 @media (max-width: 860px) {
@@ -245,6 +352,10 @@ button,
 
 @media (max-width: 520px) {
   .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .symbol-guide dl {
     grid-template-columns: 1fr;
   }
 

@@ -18,7 +18,15 @@ export function buildMusicXml(notes, options = {}) {
   const title = options.title ?? "Hangul Note Staff Score";
   const tempo = Number(options.tempo ?? 96);
   const [beats, beatType] = String(options.timeSignature ?? "4/4").split("/");
+  const notesPerPage = Number(options.notesPerPage ?? 0);
+  const pageBreakIds = new Set();
+  if (notesPerPage > 0) {
+    for (let index = notesPerPage; index < notes.length; index += notesPerPage) {
+      pageBreakIds.add(notes[index].id);
+    }
+  }
   const measures = groupByMeasure(notes);
+  let noteNumber = 0;
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
@@ -33,7 +41,18 @@ export function buildMusicXml(notes, options = {}) {
   </part-list>
   <part id="P1">
 ${measures
-  .map((measureNotes, index) => renderMeasure(measureNotes, index + 1, { beats, beatType, tempo, includeAttributes: index === 0 }))
+  .map((measureNotes, index) => {
+    const rendered = renderMeasure(measureNotes, index + 1, {
+      beats,
+      beatType,
+      tempo,
+      includeAttributes: index === 0,
+      pageBreakIds,
+      startNoteNumber: noteNumber,
+    });
+    noteNumber += measureNotes.length;
+    return rendered;
+  })
   .join("\n")}
   </part>
 </score-partwise>
@@ -80,7 +99,7 @@ function renderMeasure(notes, number, context) {
 
   return `  <measure number="${number}">
 ${attributes}
-${notes.map(renderNote).join("\n")}
+${notes.map((note) => `${context.pageBreakIds?.has(note.id) ? '    <print new-page="yes"/>\n' : ""}${renderNote(note)}`).join("\n")}
   </measure>`;
 }
 

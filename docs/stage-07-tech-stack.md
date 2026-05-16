@@ -6,6 +6,7 @@
 - 악보 렌더링: 자체 SVG 렌더러.
 - 실제 악보 교환 파일: MusicXML 3.1 생성.
 - PDF 텍스트 추출: 브라우저 PDF.js 동적 import.
+- PDF 다운로드: 브라우저 jsPDF 동적 로드.
 - DB/API/인증: P0 없음.
 - 배포: 정적 호스팅 또는 로컬 `python -m http.server`.
 
@@ -25,7 +26,7 @@
 
 ## 최종 확정안 1줄 요약
 
-Vanilla HTML/CSS/JavaScript + SVG renderer + MusicXML export + optional PDF.js, no backend.
+Vanilla HTML/CSS/JavaScript + A4 SVG renderer + PNG/PDF/MusicXML export + optional PDF.js/jsPDF, no backend.
 
 ## 단계 종료 정리
 
@@ -33,3 +34,7 @@ Vanilla HTML/CSS/JavaScript + SVG renderer + MusicXML export + optional PDF.js, 
 2. 다음 단계 입력 핵심 요약: 프로젝트 구조는 `index.html`, `styles.css`, `src/*`, `docs/*`.
 3. 추가 확인 필요 항목: 정적 배포 플랫폼 선택.
 4. 충돌 가능 항목: 서버 저장/로그인 추가 시 스택 변경 가능.
+
+## 수정 표시
+
+- 2026-05-16: A4 SVG 렌더러와 jsPDF 기반 PDF 다운로드를 기준 스택에 반영.
