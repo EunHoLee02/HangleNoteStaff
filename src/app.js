@@ -27,7 +27,10 @@ let currentPageCount = 0;
 
 elements.renderButton.addEventListener("click", render);
 elements.sampleButton.addEventListener("click", () => {
-  elements.noteInput.value = "도 레 미 파 | 솔 라 시 도' | 도'/2 시 라 솔 | 파 미 레 도 | 도레미파솔라시도 도레미파솔라시도";
+  elements.noteInput.value = [
+    "|: 도/1 | 레/2 미/4 파/8 솔/16 | 라/36 시. 도' | 도~ 도 레( 미 파) :|",
+    "도# 레b 미= 파> | 솔_ 라! 시tr 도'g | 쉼/4 도% 레f2 미Fine ||",
+  ].join("\n");
   render();
 });
 elements.clearButton.addEventListener("click", () => {
@@ -87,7 +90,7 @@ function render() {
   currentPageCount = rendered.pageCount;
   elements.scoreCanvas.innerHTML = rendered.html;
   const durationName = DURATION_LABELS[options.defaultDuration] ?? "4분음표";
-  elements.scoreSummary.textContent = `${currentNotes.length}개 음표, ${currentPageCount}쪽, ${options.timeSignature}, 기본 ${durationName}`;
+  elements.scoreSummary.textContent = `${currentNotes.length}개 음표, ${currentPageCount}쪽, ${options.timeSignature}, 기본 ${durationName}, 한 줄 최대 4마디`;
   setStatus(`A4 ${currentPageCount}쪽 악보와 내보내기를 갱신했습니다.`);
 }
 

@@ -4,6 +4,7 @@ const DURATION_DIVISIONS = {
   quarter: 4,
   eighth: 2,
   sixteenth: 1,
+  thirtysixth: 1,
 };
 
 const TYPE_BY_DURATION = {
@@ -12,6 +13,7 @@ const TYPE_BY_DURATION = {
   quarter: "quarter",
   eighth: "eighth",
   sixteenth: "16th",
+  thirtysixth: "32nd",
 };
 
 export function buildMusicXml(notes, options = {}) {
@@ -71,6 +73,8 @@ function groupByMeasure(notes) {
 }
 
 function renderMeasure(notes, number, context) {
+  const leftBarline = renderBarline(notes[0]?.barBefore, "left");
+  const rightBarline = renderBarline(notes.at(-1)?.barAfter, "right");
   const attributes = context.includeAttributes
     ? `    <attributes>
       <divisions>4</divisions>
@@ -99,7 +103,9 @@ function renderMeasure(notes, number, context) {
 
   return `  <measure number="${number}">
 ${attributes}
+${leftBarline}
 ${notes.map((note) => `${context.pageBreakIds?.has(note.id) ? '    <print new-page="yes"/>\n' : ""}${renderNote(note)}`).join("\n")}
+${rightBarline}
   </measure>`;
 }
 
@@ -114,14 +120,62 @@ ${note.accidental ? `      <alter>${note.accidental}</alter>\n` : ""}      <octa
     </pitch>`;
 
   return `    <note>
+${note.grace ? "    <grace/>\n" : ""}${note.tie ? '    <tie type="start"/>\n' : ""}
 ${restOrPitch}
     <duration>${duration}</duration>
     <type>${type}</type>
-${note.accidental ? `    <accidental>${note.accidental === 1 ? "sharp" : "flat"}</accidental>\n` : ""}    <lyric>
+${note.dotted ? "    <dot/>\n" : ""}${note.accidental || note.explicitNatural ? `    <accidental>${note.accidental === 1 ? "sharp" : note.accidental === -1 ? "flat" : "natural"}</accidental>\n` : ""}${renderNotations(note)}    <lyric>
       <syllabic>single</syllabic>
       <text>${escapeXml(note.raw)}</text>
     </lyric>
   </note>`;
+}
+
+function renderBarline(kind, location) {
+  if (!kind || kind === "single") return "";
+  if (kind === "double") {
+    return `    <barline location="${location}">
+      <bar-style>light-light</bar-style>
+    </barline>`;
+  }
+  if (kind === "startRepeat") {
+    return `    <barline location="${location}">
+      <bar-style>heavy-light</bar-style>
+      <repeat direction="forward"/>
+    </barline>`;
+  }
+  if (kind === "endRepeat") {
+    return `    <barline location="${location}">
+      <bar-style>light-heavy</bar-style>
+      <repeat direction="backward"/>
+    </barline>`;
+  }
+  if (kind === "endStartRepeat") {
+    return `    <barline location="${location}">
+      <bar-style>light-heavy</bar-style>
+      <repeat direction="backward"/>
+    </barline>
+    <barline location="${location}">
+      <bar-style>heavy-light</bar-style>
+      <repeat direction="forward"/>
+    </barline>`;
+  }
+  return "";
+}
+
+function renderNotations(note) {
+  const items = [];
+  if (note.tie) items.push('<tied type="start"/>');
+  if (note.slurStart) items.push('<slur type="start"/>');
+  if (note.slurEnd) items.push('<slur type="stop"/>');
+  if (note.articulation === "accent") items.push("<articulations><accent/></articulations>");
+  if (note.articulation === "tenuto") items.push("<articulations><tenuto/></articulations>");
+  if (note.articulation === "marcato") items.push("<articulations><strong-accent/></articulations>");
+  if (items.length === 0) return "";
+  return `    <notations>
+      ${items.join("\n      ")}
+    </notations>
+`;
 }
 
 function escapeXml(value) {

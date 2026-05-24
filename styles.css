@@ -221,7 +221,7 @@ button,
 
 .symbol-guide dl > div {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   min-height: 30px;
@@ -237,7 +237,10 @@ button,
   background: #f7f4ea;
   color: var(--ink);
   font-family: Consolas, "Segoe UI", monospace;
+  font-size: 0.85rem;
   font-weight: 800;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .symbol-guide dd {

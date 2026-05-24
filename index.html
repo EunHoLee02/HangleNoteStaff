@@ -26,7 +26,7 @@
       <div class="field-group">
         <label for="noteInput">한글 음계</label>
         <textarea id="noteInput" spellcheck="false">도 레 미 파 | 솔 라 시 도</textarea>
-        <p class="hint">붙여쓰기와 띄어쓰기 모두 지원합니다. 옥타브 기호는 붙인 음에만 적용됩니다.</p>
+        <p class="hint">붙여쓰기와 띄어쓰기 모두 지원합니다. 옥타브, 길이, 임시표, 아티큘레이션 기호는 붙인 음에만 적용됩니다.</p>
       </div>
 
       <div class="settings-grid">
@@ -49,6 +49,8 @@
             <option value="quarter" selected>4분음표</option>
             <option value="half">2분음표</option>
             <option value="eighth">8분음표</option>
+            <option value="sixteenth">16분음표</option>
+            <option value="thirtysixth">36분음표</option>
             <option value="whole">온음표</option>
           </select>
         </label>
@@ -70,8 +72,32 @@
         <h2>기호 사용법</h2>
         <dl>
           <div>
+            <dt>||</dt>
+            <dd>겹세로줄</dd>
+          </div>
+          <div>
+            <dt>|:</dt>
+            <dd>도돌이표 시작</dd>
+          </div>
+          <div>
+            <dt>:|</dt>
+            <dd>도돌이표 끝</dd>
+          </div>
+          <div>
             <dt>|</dt>
             <dd>마디 구분</dd>
+          </div>
+          <div>
+            <dt>/1</dt>
+            <dd>온음표</dd>
+          </div>
+          <div>
+            <dt>/16</dt>
+            <dd>16분음표</dd>
+          </div>
+          <div>
+            <dt>/36</dt>
+            <dd>36분음표</dd>
           </div>
           <div>
             <dt>/4</dt>
@@ -105,20 +131,80 @@
             <dt>b</dt>
             <dd>플랫</dd>
           </div>
+          <div>
+            <dt>=</dt>
+            <dd>제자리표</dd>
+          </div>
+          <div>
+            <dt>.</dt>
+            <dd>점음표</dd>
+          </div>
+          <div>
+            <dt>~</dt>
+            <dd>타이</dd>
+          </div>
+          <div>
+            <dt>( )</dt>
+            <dd>슬러 시작/끝</dd>
+          </div>
+          <div>
+            <dt>&gt;</dt>
+            <dd>악센트</dd>
+          </div>
+          <div>
+            <dt>_</dt>
+            <dd>테누토</dd>
+          </div>
+          <div>
+            <dt>!</dt>
+            <dd>마르카토</dd>
+          </div>
+          <div>
+            <dt>tr</dt>
+            <dd>트릴</dd>
+          </div>
+          <div>
+            <dt>turn</dt>
+            <dd>턴</dd>
+          </div>
+          <div>
+            <dt>mordent</dt>
+            <dd>모르덴트</dd>
+          </div>
+          <div>
+            <dt>g</dt>
+            <dd>꾸밈음</dd>
+          </div>
+          <div>
+            <dt>%</dt>
+            <dd>트레몰로</dd>
+          </div>
+          <div>
+            <dt>f1</dt>
+            <dd>운지 번호</dd>
+          </div>
+          <div>
+            <dt>Fine</dt>
+            <dd>반복/이동 표식</dd>
+          </div>
           </dl>
           <div class="example-guide">
             <h3>사용 예시</h3>
             <div class="example-card">
-              <span>기본 리듬과 마디</span>
-              <code>도/4 레/4 미/4 파/4 | 솔/2 라/2 | 시 도'</code>
+              <span>온음표, 16분음표, 36분음표</span>
+              <code>도/1 | 레/2 미/4 파/8 솔/16 | 라/36 시. 도'</code>
             </div>
             <div class="example-card">
-              <span>쉼표, 샵, 플랫</span>
-              <code>도 레 쉼 파 | 솔# 라 시b 도'</code>
+              <span>도돌이표와 한 줄 4마디</span>
+              <code>|: 도 레 미 파 | 솔 라 시 도' | 도' 시 라 솔 | 파 미 레 도 :|</code>
             </div>
             <div class="example-card">
-              <span>낮은 옥타브와 붙여쓰기</span>
-              <code>도, 레, 미, 파, | 도레미파솔라시도</code>
+              <span>임시표, 아티큘레이션, 장식음</span>
+              <code>도# 레b 미= 파&gt; | 솔_ 라! 시tr 도'g | 도~ 도 레( 미 파)</code>
+            </div>
+            <div class="example-card">
+              <span>쉼표, 트레몰로, 운지, 이동 표식</span>
+              <code>쉼/4 도% 레f2 미Fine || 도레미파솔라시도</code>
             </div>
           </div>
         </section>
