@@ -68,6 +68,28 @@
         <button id="clearButton" type="button" class="ghost-button">지우기</button>
       </div>
 
+      <section class="omr-panel" aria-label="OMR 가져오기">
+        <div class="upload-row">
+          <label class="file-picker">
+            MusicXML 가져오기
+            <input id="musicXmlImportInput" type="file"
+              accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/xml,text/xml,application/zip" />
+          </label>
+          <label class="file-picker">
+            OMR 서버로 보내기
+            <input id="omrFileInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*" />
+          </label>
+        </div>
+        <p id="omrEndpointLabel" class="hint">OMR 서버를 자동으로 연결합니다.</p>
+        <details class="advanced-settings">
+          <summary>OMR 서버 설정</summary>
+          <div class="field-group">
+            <label for="omrEndpointInput">서버 주소</label>
+            <input id="omrEndpointInput" type="url" placeholder="자동 연결" />
+          </div>
+        </details>
+      </section>
+
       <section class="symbol-guide" aria-label="악보 입력 기호 안내">
         <h2>기호 사용법</h2>
         <dl>

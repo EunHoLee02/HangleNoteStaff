@@ -1,6 +1,7 @@
 import { DURATION_LABELS, parseHangulNotes } from "./parser.js";
 import { A4_PAGE, renderEmptyPage, renderPagedScore } from "./scoreRenderer.js";
 import { buildMusicXml } from "./musicXml.js";
+import { readMusicXmlBlob, readMusicXmlFile } from "./musicXmlImporter.js";
 import { extractTextFromFile } from "./pdfExtractor.js";
 
 const elements = {
@@ -10,6 +11,10 @@ const elements = {
   durationInput: document.querySelector("#durationInput"),
   tempoInput: document.querySelector("#tempoInput"),
   fileInput: document.querySelector("#fileInput"),
+  musicXmlImportInput: document.querySelector("#musicXmlImportInput"),
+  omrEndpointInput: document.querySelector("#omrEndpointInput"),
+  omrEndpointLabel: document.querySelector("#omrEndpointLabel"),
+  omrFileInput: document.querySelector("#omrFileInput"),
   renderButton: document.querySelector("#renderButton"),
   sampleButton: document.querySelector("#sampleButton"),
   clearButton: document.querySelector("#clearButton"),
@@ -25,6 +30,17 @@ const elements = {
 let currentNotes = [];
 let currentPageCount = 0;
 
+const savedOmrEndpoint = localStorage.getItem("hangul-note-staff.omrEndpoint");
+const defaultOmrEndpoint = getDefaultOmrEndpoint();
+elements.omrEndpointInput.value = savedOmrEndpoint || defaultOmrEndpoint;
+elements.omrEndpointLabel.textContent = `OMR 서버: ${elements.omrEndpointInput.value}`;
+elements.omrEndpointInput.addEventListener("change", () => {
+  const endpoint = elements.omrEndpointInput.value.trim() || defaultOmrEndpoint;
+  elements.omrEndpointInput.value = endpoint;
+  localStorage.setItem("hangul-note-staff.omrEndpoint", endpoint);
+  elements.omrEndpointLabel.textContent = `OMR 서버: ${endpoint}`;
+});
+
 elements.renderButton.addEventListener("click", render);
 elements.sampleButton.addEventListener("click", () => {
   elements.noteInput.value = [
@@ -38,6 +54,8 @@ elements.clearButton.addEventListener("click", () => {
   render();
 });
 elements.fileInput.addEventListener("change", handleUpload);
+elements.musicXmlImportInput.addEventListener("change", handleMusicXmlImport);
+elements.omrFileInput.addEventListener("change", handleOmrUpload);
 elements.svgButton.addEventListener("click", downloadSvg);
 elements.pngButton.addEventListener("click", downloadPng);
 elements.pdfButton.addEventListener("click", downloadPdf);
@@ -65,6 +83,45 @@ async function handleUpload(event) {
   }
 }
 
+async function handleMusicXmlImport(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  setStatus(`${file.name} MusicXML을 읽는 중입니다.`);
+  try {
+    const imported = await readMusicXmlFile(file);
+    applyImportedScore(imported, `${file.name} MusicXML`);
+  } catch (error) {
+    setStatus(error.message, true);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+async function handleOmrUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const endpoint = getOmrEndpoint();
+  if (!endpoint) {
+    setStatus("OMR 서버를 찾지 못했습니다. OMR 서버 설정에서 주소를 확인해주세요.", true);
+    event.target.value = "";
+    return;
+  }
+
+  localStorage.setItem("hangul-note-staff.omrEndpoint", endpoint);
+  setStatus(`${file.name} 파일을 OMR 서버로 보내는 중입니다.`);
+
+  try {
+    const imported = await requestOmr(endpoint, file);
+    applyImportedScore(imported, `${file.name} OMR 결과`);
+  } catch (error) {
+    setStatus(error.message, true);
+  } finally {
+    event.target.value = "";
+  }
+}
+
 function getOptions() {
   return {
     baseOctave: Number(elements.octaveInput.value),
@@ -74,10 +131,153 @@ function getOptions() {
   };
 }
 
+function getOmrEndpoint() {
+  const endpoint = elements.omrEndpointInput.value.trim() || defaultOmrEndpoint;
+  elements.omrEndpointInput.value = endpoint;
+  elements.omrEndpointLabel.textContent = `OMR 서버: ${endpoint}`;
+  return endpoint;
+}
+
+function getDefaultOmrEndpoint() {
+  const configured = document.querySelector('meta[name="omr-endpoint"]')?.content?.trim();
+  if (configured) return configured;
+
+  const host = globalThis.location?.hostname ?? "";
+  const protocol = globalThis.location?.protocol ?? "http:";
+  if (host === "localhost" || host === "127.0.0.1") {
+    return "http://localhost:8080/omr/jobs";
+  }
+
+  return `${protocol}//${globalThis.location.host}/api/omr/jobs`;
+}
+
+function applyImportedScore(imported, sourceName) {
+  if (imported.timeSignature) {
+    setSelectValue(elements.timeSignatureInput, imported.timeSignature);
+  }
+  if (imported.tempo) {
+    elements.tempoInput.value = imported.tempo;
+  }
+
+  elements.noteInput.value = imported.sourceText;
+  currentNotes = imported.notes;
+  drawScore(getOptions(), `${sourceName}을 불러왔습니다. 틀린 음표는 한글 음계 입력창에서 수정한 뒤 악보 만들기를 누르면 됩니다.`);
+}
+
+async function requestOmr(endpoint, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`OMR 서버 요청이 실패했습니다. (${response.status})`);
+  }
+
+  return resolveOmrResponse(response, endpoint);
+}
+
+async function resolveOmrResponse(response, endpoint) {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return resolveOmrJson(await response.json(), endpoint);
+  }
+
+  if (contentType.includes("xml") || contentType.includes("zip") || contentType.includes("octet-stream")) {
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const filename = disposition.match(/filename="?([^"]+)"?/i)?.[1] ?? "omr-result.musicxml";
+    return readMusicXmlBlob(await response.blob(), filename);
+  }
+
+  const text = await response.text();
+  if (text.trim().startsWith("<")) {
+    return readMusicXmlBlob(new Blob([text], { type: "application/xml" }), "omr-result.musicxml");
+  }
+
+  throw new Error("OMR 서버 응답에서 MusicXML 결과를 찾지 못했습니다.");
+}
+
+async function resolveOmrJson(payload, endpoint) {
+  if (payload.musicXml) {
+    return readMusicXmlBlob(new Blob([payload.musicXml], { type: "application/xml" }), "omr-result.musicxml");
+  }
+
+  const resultUrl = payload.musicXmlUrl ?? payload.mxlUrl ?? payload.resultUrl;
+  if (resultUrl) {
+    return fetchMusicXmlResult(resultUrl);
+  }
+
+  if (payload.status === "queued" || payload.status === "processing" || payload.jobId) {
+    return pollOmrJob(payload.statusUrl ?? buildJobStatusUrl(endpoint, payload.jobId));
+  }
+
+  throw new Error("OMR 서버 JSON 응답에 musicXml, musicXmlUrl, jobId 중 하나가 필요합니다.");
+}
+
+async function pollOmrJob(statusUrl) {
+  if (!statusUrl) {
+    throw new Error("OMR 작업 상태를 확인할 URL이 없습니다.");
+  }
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (attempt > 0) await delay(2000);
+
+    const response = await fetch(statusUrl);
+    if (!response.ok) {
+      throw new Error(`OMR 작업 상태 확인이 실패했습니다. (${response.status})`);
+    }
+
+    const payload = await response.json();
+    if (payload.status === "failed" || payload.error) {
+      throw new Error(payload.error ?? "OMR 작업이 실패했습니다.");
+    }
+    if (payload.status === "done" || payload.status === "completed" || payload.musicXml || payload.musicXmlUrl || payload.mxlUrl || payload.resultUrl) {
+      return resolveOmrJson(payload, statusUrl);
+    }
+
+    setStatus(`OMR 서버가 악보를 분석하는 중입니다. (${attempt + 1}/30)`);
+  }
+
+  throw new Error("OMR 작업 시간이 너무 오래 걸립니다. 잠시 후 다시 시도해주세요.");
+}
+
+async function fetchMusicXmlResult(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`OMR 결과 파일을 가져오지 못했습니다. (${response.status})`);
+  }
+
+  const filename = url.split("/").pop() || "omr-result.musicxml";
+  return readMusicXmlBlob(await response.blob(), filename);
+}
+
+function buildJobStatusUrl(endpoint, jobId) {
+  if (!jobId) return "";
+  return `${endpoint.replace(/\/$/, "")}/${encodeURIComponent(jobId)}`;
+}
+
+function setSelectValue(select, value) {
+  if (Array.from(select.options).some((option) => option.value === value)) {
+    select.value = value;
+  }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 function render() {
   const options = getOptions();
   currentNotes = parseHangulNotes(elements.noteInput.value, options);
+  drawScore(options);
+}
 
+function drawScore(options, successMessage) {
   if (currentNotes.length === 0) {
     currentPageCount = 0;
     elements.scoreCanvas.innerHTML = `<div class="score-page">${renderEmptyPage()}</div>`;
@@ -91,7 +291,7 @@ function render() {
   elements.scoreCanvas.innerHTML = rendered.html;
   const durationName = DURATION_LABELS[options.defaultDuration] ?? "4분음표";
   elements.scoreSummary.textContent = `${currentNotes.length}개 음표, ${currentPageCount}쪽, ${options.timeSignature}, 기본 ${durationName}, 한 줄 최대 4마디`;
-  setStatus(`A4 ${currentPageCount}쪽 악보와 내보내기를 갱신했습니다.`);
+  setStatus(successMessage ?? `A4 ${currentPageCount}쪽 악보와 내보내기를 갱신했습니다.`);
 }
 
 function downloadSvg() {

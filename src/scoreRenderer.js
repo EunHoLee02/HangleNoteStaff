@@ -7,12 +7,23 @@ const STAFF_LEFT = 76;
 const STAFF_RIGHT = PAGE_WIDTH - PAGE_MARGIN;
 const NOTE_HEAD_RX = 8.8;
 const NOTE_HEAD_RY = 5.8;
+const MIN_NOTE_GAP = 22;
+const MIN_LABEL_GAP = 34;
 const BOTTOM_LINE_STEP = 4 * 7 + 2; // E4 on treble clef.
 const FIRST_SYSTEM_TOP = 104;
 const SYSTEM_GAP = 116;
 const SYSTEMS_PER_PAGE = 8;
 const MEASURES_PER_SYSTEM = 4;
 const NOTES_PER_PAGE = SYSTEMS_PER_PAGE * MEASURES_PER_SYSTEM * 8;
+
+const DURATION_BEATS = {
+  whole: 4,
+  half: 2,
+  quarter: 1,
+  eighth: 0.5,
+  sixteenth: 0.25,
+  thirtysixth: 0.125,
+};
 
 export const A4_PAGE = {
   width: PAGE_WIDTH,
@@ -118,34 +129,142 @@ function renderScorePage(systems, options = {}) {
 }
 
 function renderSystem(notes, staffTop, options) {
-  const noteAreaLeft = STAFF_LEFT + 94;
-  const noteAreaRight = STAFF_RIGHT - 18;
-  const noteGap = (noteAreaRight - noteAreaLeft) / Math.max(1, notes.length - 1);
+  const measureAreaLeft = STAFF_LEFT + 78;
+  const measureAreaRight = STAFF_RIGHT;
+  const measureGroups = groupNotesByMeasure(notes);
+  const measureLayouts = layoutMeasures(measureGroups, measureAreaLeft, measureAreaRight);
+  const beatsPerMeasure = getBeatsPerMeasure(options.timeSignature);
   const notePositions = new Map();
   const parts = [
     renderStaffLines(staffTop),
     options.showClefAndMeter ? renderClefAndMeter(staffTop, options.timeSignature) : "",
   ];
 
-  let lastMeasure = notes[0]?.measure ?? null;
-  notes.forEach((note, index) => {
-    const x = noteAreaLeft + index * noteGap;
-    notePositions.set(note.id, { x, y: note.isRest ? staffTop + LINE_GAP * 2 : pitchY(note, staffTop) });
+  measureLayouts.forEach(({ measureNotes, measureStart, measureEnd }, measureIndex) => {
+    const boundaryKind = measureNotes[0]?.barBefore ?? "single";
 
-    if (index === 0 && note.barBefore && note.barBefore !== "single") {
-      parts.push(renderBarLine(x - Math.min(noteGap * 0.55, 28), staffTop, note.barBefore));
+    if (measureIndex > 0 || (boundaryKind && boundaryKind !== "single")) {
+      parts.push(renderBarLine(measureStart, staffTop, boundaryKind));
     }
 
-    if (lastMeasure !== null && note.measure !== lastMeasure) {
-      parts.push(renderBarLine(x - noteGap / 2, staffTop, note.barBefore ?? "single"));
-      lastMeasure = note.measure;
-    }
-    parts.push(note.isRest ? renderRest(note, x, staffTop) : renderNote(note, x, staffTop));
+    const measureWidth = measureEnd - measureStart;
+    const notePadding = Math.min(18, measureWidth * 0.12);
+    const innerLeft = measureStart + notePadding;
+    const innerRight = measureEnd - notePadding;
+    const innerWidth = Math.max(1, innerRight - innerLeft);
+
+    layoutMeasureNotes(measureNotes, {
+      beatsPerMeasure,
+      innerLeft,
+      innerRight,
+      innerWidth,
+    }).forEach(({ note, x, labelLevel }) => {
+      notePositions.set(note.id, { x, y: note.isRest ? staffTop + LINE_GAP * 2 : pitchY(note, staffTop) });
+      parts.push(note.isRest ? renderRest(note, x, staffTop, labelLevel) : renderNote(note, x, staffTop, labelLevel));
+    });
   });
 
   parts.push(renderConnectors(notes, notePositions, staffTop));
-  parts.push(renderBarLine(STAFF_RIGHT, staffTop, notes.at(-1)?.barAfter ?? "single"));
+  parts.push(renderBarLine(measureLayouts.at(-1)?.measureEnd ?? measureAreaRight, staffTop, notes.at(-1)?.barAfter ?? "single"));
   return parts.join("");
+}
+
+function layoutMeasures(measureGroups, left, right) {
+  const totalWidth = right - left;
+  const baseWidth = totalWidth / Math.max(1, measureGroups.length);
+  const desiredWidths = measureGroups.map((group) => {
+    const contentWidth = 44 + Math.max(0, group.length - 1) * MIN_NOTE_GAP;
+    return Math.max(baseWidth * 0.72, contentWidth);
+  });
+  const desiredTotal = desiredWidths.reduce((sum, width) => sum + width, 0) || totalWidth;
+  const scale = totalWidth / desiredTotal;
+  let cursor = left;
+
+  return measureGroups.map((measureNotes, index) => {
+    const width = index === measureGroups.length - 1
+      ? right - cursor
+      : desiredWidths[index] * scale;
+    const measureStart = cursor;
+    const measureEnd = cursor + width;
+    cursor = measureEnd;
+    return { measureNotes, measureStart, measureEnd };
+  });
+}
+
+function groupNotesByMeasure(notes) {
+  const groups = [];
+  notes.forEach((note) => {
+    const lastGroup = groups.at(-1);
+    if (!lastGroup || lastGroup[0]?.measure !== note.measure) {
+      groups.push([note]);
+      return;
+    }
+    lastGroup.push(note);
+  });
+  return groups;
+}
+
+function getBeatsPerMeasure(timeSignature) {
+  const [beats, beatType] = String(timeSignature ?? "4/4").split("/").map(Number);
+  if (!beats || !beatType) return 4;
+  return beats * (4 / beatType);
+}
+
+function getNoteBeats(note) {
+  const base = DURATION_BEATS[note.duration] ?? DURATION_BEATS.quarter;
+  return note.dotted ? base * 1.5 : base;
+}
+
+function layoutMeasureNotes(measureNotes, context) {
+  const measureBeats = measureNotes.reduce((sum, note) => sum + getNoteBeats(note), 0);
+  const visualBeats = Math.max(context.beatsPerMeasure, measureBeats, 1);
+  let elapsedBeats = 0;
+
+  const positioned = measureNotes.map((note) => {
+    const noteBeats = getNoteBeats(note);
+    const x = context.innerLeft + ((elapsedBeats + noteBeats / 2) / visualBeats) * context.innerWidth;
+    elapsedBeats += noteBeats;
+    return { note, x, labelLevel: 0 };
+  });
+
+  spreadOverlaps(positioned, context.innerLeft, context.innerRight, MIN_NOTE_GAP);
+  staggerLabels(positioned);
+  return positioned;
+}
+
+function spreadOverlaps(positioned, left, right, minGap) {
+  if (positioned.length < 2) return;
+
+  for (let index = 1; index < positioned.length; index += 1) {
+    positioned[index].x = Math.max(positioned[index].x, positioned[index - 1].x + minGap);
+  }
+
+  const overflow = positioned.at(-1).x - right;
+  if (overflow > 0) {
+    positioned.forEach((item) => {
+      item.x -= overflow;
+    });
+  }
+
+  if (positioned[0].x < left) {
+    const availableGap = (right - left) / Math.max(1, positioned.length - 1);
+    const gap = Math.max(Math.min(minGap, availableGap), 1);
+    positioned.forEach((item, index) => {
+      item.x = left + index * gap;
+    });
+  }
+}
+
+function staggerLabels(positioned) {
+  let lastLabelX = Number.NEGATIVE_INFINITY;
+  positioned.forEach((item) => {
+    if (item.x - lastLabelX < MIN_LABEL_GAP) {
+      item.labelLevel = 1;
+    } else {
+      item.labelLevel = 0;
+      lastLabelX = item.x;
+    }
+  });
 }
 
 function renderStaffLines(staffTop) {
@@ -165,14 +284,14 @@ function renderClefAndMeter(staffTop, timeSignature) {
   ].join("");
 }
 
-function renderNote(note, x, staffTop) {
+function renderNote(note, x, staffTop, labelLevel = 0) {
   const y = pitchY(note, staffTop);
   const isOpen = note.duration === "whole" || note.duration === "half";
   const needsStem = note.duration !== "whole";
   const stemUp = y >= staffTop + LINE_GAP * 2;
   const stemX = stemUp ? x + NOTE_HEAD_RX - 1 : x - NOTE_HEAD_RX + 1;
   const stemY2 = stemUp ? y - 40 : y + 40;
-  const labelY = staffTop + 82;
+  const labelY = staffTop + 82 + labelLevel * 13;
   const accidental = note.accidental === 1 ? "#" : note.accidental === -1 ? "b" : note.explicitNatural ? "♮" : "";
   const flagCount = getFlagCount(note.duration);
   const scale = note.grace ? 0.72 : 1;
@@ -198,7 +317,7 @@ function renderNote(note, x, staffTop) {
   ].join("");
 }
 
-function renderRest(note, x, staffTop) {
+function renderRest(note, x, staffTop, labelLevel = 0) {
   const y = staffTop + LINE_GAP * 2;
   const shape =
     note.duration === "whole"
@@ -209,7 +328,7 @@ function renderRest(note, x, staffTop) {
   return [
     shape,
     note.dotted ? `<circle cx="${x + 17}" cy="${y - 2}" r="2.2" fill="#1d2528"/>` : "",
-    `<text x="${x}" y="${staffTop + 82}" text-anchor="middle" font-family="Segoe UI, Malgun Gothic, sans-serif" font-size="12" fill="#25735a">${escapeXml(note.raw)}</text>`,
+    `<text x="${x}" y="${staffTop + 82 + labelLevel * 13}" text-anchor="middle" font-family="Segoe UI, Malgun Gothic, sans-serif" font-size="12" fill="#25735a">${escapeXml(note.raw)}</text>`,
   ].join("");
 }
 
