@@ -356,6 +356,31 @@ button,
   box-shadow: 0 10px 32px rgba(29, 37, 40, 0.13);
 }
 
+.score-note {
+  cursor: pointer;
+  outline: none;
+}
+
+.score-note:hover ellipse,
+.score-note:hover rect,
+.score-note:hover path,
+.score-note:focus-visible ellipse,
+.score-note:focus-visible rect,
+.score-note:focus-visible path,
+.score-note.selected ellipse,
+.score-note.selected rect,
+.score-note.selected path {
+  stroke: var(--amber);
+  stroke-width: 2.5;
+}
+
+.score-note:hover text,
+.score-note:focus-visible text,
+.score-note.selected text {
+  fill: var(--green-dark);
+  font-weight: 800;
+}
+
 .score-page {
   margin: 0 auto 24px;
 }

@@ -14,6 +14,7 @@ const elements = {
   musicXmlImportInput: document.querySelector("#musicXmlImportInput"),
   omrEndpointInput: document.querySelector("#omrEndpointInput"),
   omrEndpointLabel: document.querySelector("#omrEndpointLabel"),
+  omrEngineInput: document.querySelector("#omrEngineInput"),
   omrFileInput: document.querySelector("#omrFileInput"),
   renderButton: document.querySelector("#renderButton"),
   sampleButton: document.querySelector("#sampleButton"),
@@ -29,6 +30,7 @@ const elements = {
 
 let currentNotes = [];
 let currentPageCount = 0;
+let selectedNoteId = null;
 
 const savedOmrEndpoint = localStorage.getItem("hangul-note-staff.omrEndpoint");
 const defaultOmrEndpoint = getDefaultOmrEndpoint();
@@ -60,6 +62,8 @@ elements.svgButton.addEventListener("click", downloadSvg);
 elements.pngButton.addEventListener("click", downloadPng);
 elements.pdfButton.addEventListener("click", downloadPdf);
 elements.musicXmlButton.addEventListener("click", downloadMusicXml);
+elements.scoreCanvas.addEventListener("click", handleScoreClick);
+elements.scoreCanvas.addEventListener("keydown", handleScoreKeydown);
 
 render();
 
@@ -160,13 +164,19 @@ function applyImportedScore(imported, sourceName) {
   }
 
   elements.noteInput.value = imported.sourceText;
-  currentNotes = imported.notes;
-  drawScore(getOptions(), `${sourceName}을 불러왔습니다. 틀린 음표는 한글 음계 입력창에서 수정한 뒤 악보 만들기를 누르면 됩니다.`);
+  const parsedSourceNotes = parseHangulNotes(imported.sourceText, getOptions());
+  currentNotes = imported.notes.map((note, index) => ({
+    ...note,
+    sourceStart: parsedSourceNotes[index]?.sourceStart,
+    sourceEnd: parsedSourceNotes[index]?.sourceEnd,
+  }));
+  drawScore(getOptions(), `${sourceName}을 불러왔습니다. 틀린 음표는 악보에서 클릭해 바로 수정할 수 있습니다.`);
 }
 
 async function requestOmr(endpoint, file) {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("engine", elements.omrEngineInput.value || "auto");
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -174,10 +184,28 @@ async function requestOmr(endpoint, file) {
   });
 
   if (!response.ok) {
-    throw new Error(`OMR 서버 요청이 실패했습니다. (${response.status})`);
+    throw new Error(await readOmrError(response));
   }
 
   return resolveOmrResponse(response, endpoint);
+}
+
+async function readOmrError(response) {
+  const fallback = `OMR 서버 요청이 실패했습니다. (${response.status})`;
+  const contentType = response.headers.get("content-type") ?? "";
+
+  try {
+    if (contentType.includes("application/json")) {
+      const payload = await response.json();
+      const detail = payload.detail || payload.error;
+      return detail ? `${fallback}: ${detail}` : fallback;
+    }
+
+    const text = await response.text();
+    return text.trim() ? `${fallback}: ${text.trim().slice(0, 500)}` : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 async function resolveOmrResponse(response, endpoint) {
@@ -274,6 +302,7 @@ function delay(ms) {
 function render() {
   const options = getOptions();
   currentNotes = parseHangulNotes(elements.noteInput.value, options);
+  selectedNoteId = null;
   drawScore(options);
 }
 
@@ -289,9 +318,59 @@ function drawScore(options, successMessage) {
   const rendered = renderPagedScore(currentNotes, options);
   currentPageCount = rendered.pageCount;
   elements.scoreCanvas.innerHTML = rendered.html;
+  syncSelectedNote();
   const durationName = DURATION_LABELS[options.defaultDuration] ?? "4분음표";
   elements.scoreSummary.textContent = `${currentNotes.length}개 음표, ${currentPageCount}쪽, ${options.timeSignature}, 기본 ${durationName}, 한 줄 최대 4마디`;
   setStatus(successMessage ?? `A4 ${currentPageCount}쪽 악보와 내보내기를 갱신했습니다.`);
+}
+
+function handleScoreClick(event) {
+  const noteElement = event.target.closest(".score-note");
+  if (!noteElement || !elements.scoreCanvas.contains(noteElement)) return;
+  editNoteById(noteElement.dataset.noteId);
+}
+
+function handleScoreKeydown(event) {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const noteElement = event.target.closest(".score-note");
+  if (!noteElement || !elements.scoreCanvas.contains(noteElement)) return;
+  event.preventDefault();
+  editNoteById(noteElement.dataset.noteId);
+}
+
+function editNoteById(noteId) {
+  const note = currentNotes.find((candidate) => candidate.id === noteId);
+  if (!note || !Number.isInteger(note.sourceStart) || !Number.isInteger(note.sourceEnd)) {
+    setStatus("선택한 음표의 원문 위치를 찾지 못했습니다. 입력창에서 직접 수정해 주세요.", true);
+    return;
+  }
+
+  selectedNoteId = noteId;
+  syncSelectedNote();
+
+  const replacement = prompt("선택한 음표를 수정하세요.", note.raw);
+  if (replacement === null) return;
+
+  updateNoteInputRange(note.sourceStart, note.sourceEnd, replacement.trim());
+}
+
+function updateNoteInputRange(start, end, replacement) {
+  const source = elements.noteInput.value;
+  elements.noteInput.value = `${source.slice(0, start)}${replacement}${source.slice(end)}`;
+  elements.noteInput.focus();
+  elements.noteInput.setSelectionRange(start, start + replacement.length);
+  render();
+  setStatus(`선택한 음표를 "${replacement || "삭제"}"로 수정했습니다.`);
+}
+
+function syncSelectedNote() {
+  elements.scoreCanvas.querySelectorAll(".score-note.selected").forEach((element) => {
+    element.classList.remove("selected");
+  });
+
+  if (!selectedNoteId) return;
+  const selected = elements.scoreCanvas.querySelector(`.score-note[data-note-id="${CSS.escape(selectedNoteId)}"]`);
+  selected?.classList.add("selected");
 }
 
 function downloadSvg() {

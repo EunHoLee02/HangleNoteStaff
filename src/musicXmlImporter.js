@@ -38,12 +38,18 @@ export async function readMusicXmlFile(file) {
 
 export async function readMusicXmlBlob(blob, filename = "") {
   const lowerName = filename.toLowerCase();
-  if (lowerName.endsWith(".mxl") || blob.type.includes("zip")) {
-    const xmlText = await extractXmlFromMxl(await blob.arrayBuffer());
+  const arrayBuffer = await blob.arrayBuffer();
+  if (lowerName.endsWith(".mxl") || blob.type.includes("zip") || isZipBuffer(arrayBuffer)) {
+    const xmlText = await extractXmlFromMxl(arrayBuffer);
     return parseMusicXml(xmlText);
   }
 
-  return parseMusicXml(await blob.text());
+  return parseMusicXml(new TextDecoder("utf-8").decode(arrayBuffer));
+}
+
+function isZipBuffer(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer.slice(0, 4));
+  return bytes[0] === 0x50 && bytes[1] === 0x4b;
 }
 
 export function parseMusicXml(xmlText) {

@@ -61,6 +61,8 @@ export function parseHangulNotes(text, options = {}) {
     notes.push({
       id: `n-${notes.length + 1}`,
       raw: token.raw,
+      sourceStart: token.sourceStart,
+      sourceEnd: token.sourceEnd,
       name: token.name,
       isRest,
       step: isRest ? null : def.step,
@@ -126,6 +128,7 @@ function tokenize(text) {
       continue;
     }
 
+    const sourceStart = i;
     let raw = name;
     let accidental = 0;
     let explicitNatural = false;
@@ -206,6 +209,8 @@ function tokenize(text) {
       type: "note",
       name,
       raw,
+      sourceStart,
+      sourceEnd: i,
       accidental,
       explicitNatural,
       octaveDelta,

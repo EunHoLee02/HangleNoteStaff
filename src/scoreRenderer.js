@@ -160,7 +160,8 @@ function renderSystem(notes, staffTop, options) {
       innerWidth,
     }).forEach(({ note, x, labelLevel }) => {
       notePositions.set(note.id, { x, y: note.isRest ? staffTop + LINE_GAP * 2 : pitchY(note, staffTop) });
-      parts.push(note.isRest ? renderRest(note, x, staffTop, labelLevel) : renderNote(note, x, staffTop, labelLevel));
+      const noteContent = note.isRest ? renderRest(note, x, staffTop, labelLevel) : renderNote(note, x, staffTop, labelLevel);
+      parts.push(renderEditableNote(note, noteContent));
     });
   });
 
@@ -330,6 +331,10 @@ function renderRest(note, x, staffTop, labelLevel = 0) {
     note.dotted ? `<circle cx="${x + 17}" cy="${y - 2}" r="2.2" fill="#1d2528"/>` : "",
     `<text x="${x}" y="${staffTop + 82 + labelLevel * 13}" text-anchor="middle" font-family="Segoe UI, Malgun Gothic, sans-serif" font-size="12" fill="#25735a">${escapeXml(note.raw)}</text>`,
   ].join("");
+}
+
+function renderEditableNote(note, content) {
+  return `<g class="score-note" data-note-id="${escapeXml(note.id)}" role="button" tabindex="0" aria-label="${escapeXml(`${note.raw} 수정`)}">${content}</g>`;
 }
 
 function pitchY(note, staffTop) {
