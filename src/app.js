@@ -193,6 +193,10 @@ async function requestOmr(endpoint, file) {
 async function readOmrError(response) {
   const fallback = `OMR 서버 요청이 실패했습니다. (${response.status})`;
   const contentType = response.headers.get("content-type") ?? "";
+  const deployedDefaultMessage = getDeployedDefaultOmrMessage(response.url);
+  if (deployedDefaultMessage && response.status === 404) {
+    return `${fallback}: ${deployedDefaultMessage}`;
+  }
 
   try {
     if (contentType.includes("application/json")) {
@@ -202,10 +206,27 @@ async function readOmrError(response) {
     }
 
     const text = await response.text();
+    if (deployedDefaultMessage && contentType.includes("text/html")) {
+      return `${fallback}: ${deployedDefaultMessage}`;
+    }
     return text.trim() ? `${fallback}: ${text.trim().slice(0, 500)}` : fallback;
   } catch {
     return fallback;
   }
+}
+
+function getDeployedDefaultOmrMessage(responseUrl) {
+  try {
+    const url = new URL(responseUrl);
+    const isLocalhost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    const isDefaultApi = url.origin === globalThis.location.origin && url.pathname === "/api/omr/jobs";
+    if (!isLocalhost && isDefaultApi) {
+      return "배포된 사이트에는 /api/omr/jobs OMR 백엔드가 없습니다. OMR 서버를 Render, Railway, Fly.io, Cloud Run 같은 별도 서버에 배포한 뒤 OMR 서버 설정에 https://<서버주소>/omr/jobs 를 입력해주세요.";
+    }
+  } catch {
+    return "";
+  }
+  return "";
 }
 
 async function resolveOmrResponse(response, endpoint) {
